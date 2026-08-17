@@ -1,0 +1,293 @@
+blueprint:
+  name: Hue Wall Switch v1.0
+  description: >
+    🎛️ **Turn your Hue Wall Switch Module into a fully custom controller.**
+    Assign a free action to each paddle (Left, Right) and event type
+    (initial_press, repeat, short_release, long_press, long_release) —
+    dimming, time-based logic, whatever you need. Each paddle also has an
+    optional **Scene Cycler**: tap through your scenes, and the counter
+    resets after a short timeout (fixed at 2.5s).
+    ℹ️ Requires one `input_number` helper per paddle using the Scene Cycler.
+    ℹ️ Home Assistant currently requires each paddle's event entity to be
+    picked explicitly below — triggers can't resolve entities from a
+    device selection dynamically (entity_id in a trigger can't be a
+    template). Pick the 2 event entities of your module once when setting
+    this up.
+    ℹ️ `short_release` is delayed by the Hue Bridge itself (its external
+    EventStream API rate-limits updates to ~1/device/second) — this is a
+    Bridge firmware limitation, not something this blueprint can speed up
+    while staying on the Hue Bridge integration.
+    ℹ️ Assumes the Wall Switch Module reports the same event_type values as
+    the Hue Dimmer Switch (initial_press/repeat/short_release/long_press/
+    long_release) — check Entwicklerwerkzeuge → Zustände for your paddle's
+    entity to confirm before relying on repeat/long_press/long_release.
+  domain: automation
+  homeassistant:
+    min_version: 2024.8.0
+  input:
+    button_left_section:
+      name: "🎛️ Paddle Left"
+      icon: mdi:arrow-left-bold
+      collapsed: true
+      input:
+        button_left_entity:
+          name: "🔘 Event Entity"
+          description: The event entity for this paddle.
+          default: ""
+          selector:
+            entity:
+              domain: event
+        button_left_initial_press_action:
+          name: "👆 Action on: initial_press"
+          description: Fires immediately on press-down, for both taps and holds.
+          default: []
+          selector:
+            action: {}
+        button_left_repeat_action:
+          name: "🔁 Action on: repeat (e.g. dimming while held)"
+          default: []
+          selector:
+            action: {}
+        button_left_short_release_action:
+          name: "✋ Action on: short_release"
+          description: Ignored if a Scene Cycler is configured below.
+          default: []
+          selector:
+            action: {}
+        button_left_long_press_action:
+          name: "⏱️ Action on: long_press"
+          default: []
+          selector:
+            action: {}
+        button_left_long_release_action:
+          name: "🔓 Action on: long_release"
+          default: []
+          selector:
+            action: {}
+        button_left_scenes:
+          name: "🎬 Scene Cycler: Scene List (optional)"
+          description: If filled in, this overrides the short_release action above.
+          default: []
+          selector:
+            entity:
+              domain: scene
+              multiple: true
+              reorder: true
+        button_left_scene_counter:
+          name: "🔢 Scene Cycler: Counter Helper (input_number)"
+          description: Required once the scene list is filled in. Min 0 / Max = number of scenes / Step 1.
+          default: ""
+          selector:
+            entity:
+              domain: input_number
+    button_right_section:
+      name: "🎛️ Paddle Right"
+      icon: mdi:arrow-right-bold
+      collapsed: true
+      input:
+        button_right_entity:
+          name: "🔘 Event Entity"
+          description: The event entity for this paddle.
+          default: ""
+          selector:
+            entity:
+              domain: event
+        button_right_initial_press_action:
+          name: "👆 Action on: initial_press"
+          description: Fires immediately on press-down, for both taps and holds.
+          default: []
+          selector:
+            action: {}
+        button_right_repeat_action:
+          name: "🔁 Action on: repeat (e.g. dimming while held)"
+          default: []
+          selector:
+            action: {}
+        button_right_short_release_action:
+          name: "✋ Action on: short_release"
+          description: Ignored if a Scene Cycler is configured below.
+          default: []
+          selector:
+            action: {}
+        button_right_long_press_action:
+          name: "⏱️ Action on: long_press"
+          default: []
+          selector:
+            action: {}
+        button_right_long_release_action:
+          name: "🔓 Action on: long_release"
+          default: []
+          selector:
+            action: {}
+        button_right_scenes:
+          name: "🎬 Scene Cycler: Scene List (optional)"
+          description: If filled in, this overrides the short_release action above.
+          default: []
+          selector:
+            entity:
+              domain: scene
+              multiple: true
+              reorder: true
+        button_right_scene_counter:
+          name: "🔢 Scene Cycler: Counter Helper (input_number)"
+          description: Required once the scene list is filled in. Min 0 / Max = number of scenes / Step 1.
+          default: ""
+          selector:
+            entity:
+              domain: input_number
+mode: restart
+max_exceeded: silent
+
+variables:
+  button_left_scenes: !input button_left_scenes
+  button_left_scene_counter: !input button_left_scene_counter
+  button_right_scenes: !input button_right_scenes
+  button_right_scene_counter: !input button_right_scene_counter
+
+trigger:
+  - trigger: state
+    entity_id: !input button_left_entity
+    attribute: event_type
+    to: initial_press
+    id: button_left_initial_press
+  - trigger: state
+    entity_id: !input button_left_entity
+    attribute: event_type
+    to: repeat
+    id: button_left_repeat
+  - trigger: state
+    entity_id: !input button_left_entity
+    attribute: event_type
+    to: short_release
+    id: button_left_short_release
+  - trigger: state
+    entity_id: !input button_left_entity
+    attribute: event_type
+    to: long_press
+    id: button_left_long_press
+  - trigger: state
+    entity_id: !input button_left_entity
+    attribute: event_type
+    to: long_release
+    id: button_left_long_release
+  - trigger: state
+    entity_id: !input button_right_entity
+    attribute: event_type
+    to: initial_press
+    id: button_right_initial_press
+  - trigger: state
+    entity_id: !input button_right_entity
+    attribute: event_type
+    to: repeat
+    id: button_right_repeat
+  - trigger: state
+    entity_id: !input button_right_entity
+    attribute: event_type
+    to: short_release
+    id: button_right_short_release
+  - trigger: state
+    entity_id: !input button_right_entity
+    attribute: event_type
+    to: long_press
+    id: button_right_long_press
+  - trigger: state
+    entity_id: !input button_right_entity
+    attribute: event_type
+    to: long_release
+    id: button_right_long_release
+
+condition: []
+action:
+  - choose:
+      # Paddle Left - short_release: Scene Cycler OR free action
+      - conditions:
+          - condition: trigger
+            id: button_left_short_release
+          - condition: template
+            value_template: "{{ button_left_scenes | length > 0 }}"
+        sequence:
+          - variables:
+              button_left_next_value: >
+                {% set current = states(button_left_scene_counter) | int(0) %}
+                {{ 1 if current >= (button_left_scenes | length) else current + 1 }}
+          - action: input_number.set_value
+            target:
+              entity_id: "{{ button_left_scene_counter }}"
+            data:
+              value: "{{ button_left_next_value }}"
+          - action: scene.turn_on
+            target:
+              entity_id: "{{ button_left_scenes[button_left_next_value - 1] }}"
+          - delay:
+              seconds: 2.5
+          - action: input_number.set_value
+            target:
+              entity_id: "{{ button_left_scene_counter }}"
+            data:
+              value: 0
+      - conditions:
+          - condition: trigger
+            id: button_left_initial_press
+        sequence: !input button_left_initial_press_action
+      - conditions:
+          - condition: trigger
+            id: button_left_repeat
+        sequence: !input button_left_repeat_action
+      - conditions:
+          - condition: trigger
+            id: button_left_short_release
+        sequence: !input button_left_short_release_action
+      - conditions:
+          - condition: trigger
+            id: button_left_long_press
+        sequence: !input button_left_long_press_action
+      - conditions:
+          - condition: trigger
+            id: button_left_long_release
+        sequence: !input button_left_long_release_action
+      # Paddle Right - short_release: Scene Cycler OR free action
+      - conditions:
+          - condition: trigger
+            id: button_right_short_release
+          - condition: template
+            value_template: "{{ button_right_scenes | length > 0 }}"
+        sequence:
+          - variables:
+              button_right_next_value: >
+                {% set current = states(button_right_scene_counter) | int(0) %}
+                {{ 1 if current >= (button_right_scenes | length) else current + 1 }}
+          - action: input_number.set_value
+            target:
+              entity_id: "{{ button_right_scene_counter }}"
+            data:
+              value: "{{ button_right_next_value }}"
+          - action: scene.turn_on
+            target:
+              entity_id: "{{ button_right_scenes[button_right_next_value - 1] }}"
+          - delay:
+              seconds: 2.5
+          - action: input_number.set_value
+            target:
+              entity_id: "{{ button_right_scene_counter }}"
+            data:
+              value: 0
+      - conditions:
+          - condition: trigger
+            id: button_right_initial_press
+        sequence: !input button_right_initial_press_action
+      - conditions:
+          - condition: trigger
+            id: button_right_repeat
+        sequence: !input button_right_repeat_action
+      - conditions:
+          - condition: trigger
+            id: button_right_short_release
+        sequence: !input button_right_short_release_action
+      - conditions:
+          - condition: trigger
+            id: button_right_long_press
+        sequence: !input button_right_long_press_action
+      - conditions:
+          - condition: trigger
+            id: button_right_long_release
+        sequence: !input button_right_long_release_action
