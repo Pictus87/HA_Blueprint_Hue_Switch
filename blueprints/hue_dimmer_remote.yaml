@@ -1,12 +1,12 @@
 blueprint:
-  name: Hue Dimmer Remote v2.0
+  name: Hue Dimmer Remote v2.1
   description: >
     🎛️ **Turn your Hue Dimmer Remote into a fully custom controller.**
     Assign a free action to each button (On, Brighter, Darker, Off) and
     event type (initial_press, repeat, short_release, long_press,
     long_release) — dimming, time-based logic, whatever you need. Each
     button also has an optional **Scene Cycler**: tap through your scenes,
-    and the counter resets after a short timeout.
+    and the counter resets after a short (fixed) timeout.
     ℹ️ Requires one `input_number` helper per button using the Scene Cycler.
     ℹ️ Home Assistant currently requires each button's event entity to be
     picked explicitly below — triggers can't resolve entities from a
@@ -16,7 +16,12 @@ blueprint:
     ℹ️ `short_release` is delayed by the Hue Bridge itself (its external
     EventStream API rate-limits updates to ~1/device/second) — this is a
     Bridge firmware limitation, not something this blueprint can speed up
-    while staying on the Hue Bridge integration.
+    while staying on the Hue Bridge integration. To avoid that delay, the
+    Scene Cycler reacts instantly on `initial_press` instead whenever a
+    button has no repeat/long_press/long_release action configured (no
+    hold behavior to conflict with). If the button does use repeat/
+    long_press/long_release, the cycler falls back to short_release so it
+    doesn't fire on the start of a hold.
   domain: automation
   homeassistant:
     min_version: 2024.8.0
@@ -46,7 +51,10 @@ blueprint:
             action: {}
         button_1_short_release_action:
           name: "✋ Action on: short_release"
-          description: Ignored if a Scene Cycler is configured below.
+          description: >-
+            Ignored if a Scene Cycler is configured below and this button
+            has no repeat/long_press/long_release action (the cycler then
+            reacts on initial_press instead).
           default: []
           selector:
             action: {}
@@ -62,7 +70,11 @@ blueprint:
             action: {}
         button_1_scenes:
           name: "🎬 Scene Cycler: Scene List (optional)"
-          description: If filled in, this overrides the short_release action above.
+          description: >-
+            If filled in, this overrides the short_release action above.
+            If repeat/long_press/long_release are all empty for this
+            button, the cycler reacts instantly on initial_press instead
+            of waiting for short_release.
           default: []
           selector:
             entity:
@@ -76,6 +88,7 @@ blueprint:
           selector:
             entity:
               domain: input_number
+
     button_2_section:
       name: "🎛️ Button 2 (Brighter)"
       icon: mdi:brightness-6
@@ -101,7 +114,10 @@ blueprint:
             action: {}
         button_2_short_release_action:
           name: "✋ Action on: short_release"
-          description: Ignored if a Scene Cycler is configured below.
+          description: >-
+            Ignored if a Scene Cycler is configured below and this button
+            has no repeat/long_press/long_release action (the cycler then
+            reacts on initial_press instead).
           default: []
           selector:
             action: {}
@@ -117,7 +133,11 @@ blueprint:
             action: {}
         button_2_scenes:
           name: "🎬 Scene Cycler: Scene List (optional)"
-          description: If filled in, this overrides the short_release action above.
+          description: >-
+            If filled in, this overrides the short_release action above.
+            If repeat/long_press/long_release are all empty for this
+            button, the cycler reacts instantly on initial_press instead
+            of waiting for short_release.
           default: []
           selector:
             entity:
@@ -131,6 +151,7 @@ blueprint:
           selector:
             entity:
               domain: input_number
+
     button_3_section:
       name: "🎛️ Button 3 (Darker)"
       icon: mdi:brightness-3
@@ -156,7 +177,10 @@ blueprint:
             action: {}
         button_3_short_release_action:
           name: "✋ Action on: short_release"
-          description: Ignored if a Scene Cycler is configured below.
+          description: >-
+            Ignored if a Scene Cycler is configured below and this button
+            has no repeat/long_press/long_release action (the cycler then
+            reacts on initial_press instead).
           default: []
           selector:
             action: {}
@@ -172,7 +196,11 @@ blueprint:
             action: {}
         button_3_scenes:
           name: "🎬 Scene Cycler: Scene List (optional)"
-          description: If filled in, this overrides the short_release action above.
+          description: >-
+            If filled in, this overrides the short_release action above.
+            If repeat/long_press/long_release are all empty for this
+            button, the cycler reacts instantly on initial_press instead
+            of waiting for short_release.
           default: []
           selector:
             entity:
@@ -186,6 +214,7 @@ blueprint:
           selector:
             entity:
               domain: input_number
+
     button_4_section:
       name: "🎛️ Button 4 (Off)"
       icon: mdi:power-off
@@ -211,7 +240,10 @@ blueprint:
             action: {}
         button_4_short_release_action:
           name: "✋ Action on: short_release"
-          description: Ignored if a Scene Cycler is configured below.
+          description: >-
+            Ignored if a Scene Cycler is configured below and this button
+            has no repeat/long_press/long_release action (the cycler then
+            reacts on initial_press instead).
           default: []
           selector:
             action: {}
@@ -227,7 +259,11 @@ blueprint:
             action: {}
         button_4_scenes:
           name: "🎬 Scene Cycler: Scene List (optional)"
-          description: If filled in, this overrides the short_release action above.
+          description: >-
+            If filled in, this overrides the short_release action above.
+            If repeat/long_press/long_release are all empty for this
+            button, the cycler reacts instantly on initial_press instead
+            of waiting for short_release.
           default: []
           selector:
             entity:
@@ -247,13 +283,24 @@ max_exceeded: silent
 variables:
   button_1_scenes: !input button_1_scenes
   button_1_scene_counter: !input button_1_scene_counter
+  button_1_repeat_action: !input button_1_repeat_action
+  button_1_long_press_action: !input button_1_long_press_action
+  button_1_long_release_action: !input button_1_long_release_action
   button_2_scenes: !input button_2_scenes
   button_2_scene_counter: !input button_2_scene_counter
+  button_2_repeat_action: !input button_2_repeat_action
+  button_2_long_press_action: !input button_2_long_press_action
+  button_2_long_release_action: !input button_2_long_release_action
   button_3_scenes: !input button_3_scenes
   button_3_scene_counter: !input button_3_scene_counter
+  button_3_repeat_action: !input button_3_repeat_action
+  button_3_long_press_action: !input button_3_long_press_action
+  button_3_long_release_action: !input button_3_long_release_action
   button_4_scenes: !input button_4_scenes
   button_4_scene_counter: !input button_4_scene_counter
-
+  button_4_repeat_action: !input button_4_repeat_action
+  button_4_long_press_action: !input button_4_long_press_action
+  button_4_long_release_action: !input button_4_long_release_action
 trigger:
   - trigger: state
     entity_id: !input button_1_entity
@@ -355,40 +402,41 @@ trigger:
     attribute: event_type
     to: long_release
     id: button_4_long_release
-
 condition: []
 action:
   - choose:
-      # Button 1 (On) - short_release: Scene Cycler OR free action
-      - conditions:
-          - condition: trigger
-            id: button_1_short_release
-          - condition: template
-            value_template: "{{ button_1_scenes | length > 0 }}"
-        sequence:
-          - variables:
-              button_1_next_value: >
-                {% set current = states(button_1_scene_counter) | int(0) %}
-                {{ 1 if current >= (button_1_scenes | length) else current + 1 }}
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_1_scene_counter }}"
-            data:
-              value: "{{ button_1_next_value }}"
-          - action: scene.turn_on
-            target:
-              entity_id: "{{ button_1_scenes[button_1_next_value - 1] }}"
-          - delay:
-              seconds: 2.5
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_1_scene_counter }}"
-            data:
-              value: 0
+      # Button 1 (On)
       - conditions:
           - condition: trigger
             id: button_1_initial_press
-        sequence: !input button_1_initial_press_action
+        sequence:
+          - choose:
+              - conditions: []
+                sequence: !input button_1_initial_press_action
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_1_scenes | length > 0 and button_1_repeat_action | length == 0 and button_1_long_press_action | length == 0 and button_1_long_release_action | length == 0 }}"
+                sequence:
+                  - variables:
+                      button_1_next_value: >
+                        {% set current = states(button_1_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_1_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_1_scene_counter }}"
+                    data:
+                      value: "{{ button_1_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_1_scenes[button_1_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_1_scene_counter }}"
+                    data:
+                      value: 0
       - conditions:
           - condition: trigger
             id: button_1_repeat
@@ -396,7 +444,32 @@ action:
       - conditions:
           - condition: trigger
             id: button_1_short_release
-        sequence: !input button_1_short_release_action
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_1_scenes | length > 0 and not (button_1_repeat_action | length == 0 and button_1_long_press_action | length == 0 and button_1_long_release_action | length == 0) }}"
+                sequence:
+                  - variables:
+                      button_1_next_value: >
+                        {% set current = states(button_1_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_1_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_1_scene_counter }}"
+                    data:
+                      value: "{{ button_1_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_1_scenes[button_1_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_1_scene_counter }}"
+                    data:
+                      value: 0
+            default: !input button_1_short_release_action
       - conditions:
           - condition: trigger
             id: button_1_long_press
@@ -405,36 +478,39 @@ action:
           - condition: trigger
             id: button_1_long_release
         sequence: !input button_1_long_release_action
-      # Button 2 (Brighter) - short_release: Scene Cycler OR free action
-      - conditions:
-          - condition: trigger
-            id: button_2_short_release
-          - condition: template
-            value_template: "{{ button_2_scenes | length > 0 }}"
-        sequence:
-          - variables:
-              button_2_next_value: >
-                {% set current = states(button_2_scene_counter) | int(0) %}
-                {{ 1 if current >= (button_2_scenes | length) else current + 1 }}
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_2_scene_counter }}"
-            data:
-              value: "{{ button_2_next_value }}"
-          - action: scene.turn_on
-            target:
-              entity_id: "{{ button_2_scenes[button_2_next_value - 1] }}"
-          - delay:
-              seconds: 2.5
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_2_scene_counter }}"
-            data:
-              value: 0
+
+      # Button 2 (Brighter)
       - conditions:
           - condition: trigger
             id: button_2_initial_press
-        sequence: !input button_2_initial_press_action
+        sequence:
+          - choose:
+              - conditions: []
+                sequence: !input button_2_initial_press_action
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_2_scenes | length > 0 and button_2_repeat_action | length == 0 and button_2_long_press_action | length == 0 and button_2_long_release_action | length == 0 }}"
+                sequence:
+                  - variables:
+                      button_2_next_value: >
+                        {% set current = states(button_2_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_2_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_2_scene_counter }}"
+                    data:
+                      value: "{{ button_2_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_2_scenes[button_2_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_2_scene_counter }}"
+                    data:
+                      value: 0
       - conditions:
           - condition: trigger
             id: button_2_repeat
@@ -442,7 +518,32 @@ action:
       - conditions:
           - condition: trigger
             id: button_2_short_release
-        sequence: !input button_2_short_release_action
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_2_scenes | length > 0 and not (button_2_repeat_action | length == 0 and button_2_long_press_action | length == 0 and button_2_long_release_action | length == 0) }}"
+                sequence:
+                  - variables:
+                      button_2_next_value: >
+                        {% set current = states(button_2_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_2_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_2_scene_counter }}"
+                    data:
+                      value: "{{ button_2_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_2_scenes[button_2_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_2_scene_counter }}"
+                    data:
+                      value: 0
+            default: !input button_2_short_release_action
       - conditions:
           - condition: trigger
             id: button_2_long_press
@@ -451,36 +552,39 @@ action:
           - condition: trigger
             id: button_2_long_release
         sequence: !input button_2_long_release_action
-      # Button 3 (Darker) - short_release: Scene Cycler OR free action
-      - conditions:
-          - condition: trigger
-            id: button_3_short_release
-          - condition: template
-            value_template: "{{ button_3_scenes | length > 0 }}"
-        sequence:
-          - variables:
-              button_3_next_value: >
-                {% set current = states(button_3_scene_counter) | int(0) %}
-                {{ 1 if current >= (button_3_scenes | length) else current + 1 }}
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_3_scene_counter }}"
-            data:
-              value: "{{ button_3_next_value }}"
-          - action: scene.turn_on
-            target:
-              entity_id: "{{ button_3_scenes[button_3_next_value - 1] }}"
-          - delay:
-              seconds: 2.5
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_3_scene_counter }}"
-            data:
-              value: 0
+
+      # Button 3 (Darker)
       - conditions:
           - condition: trigger
             id: button_3_initial_press
-        sequence: !input button_3_initial_press_action
+        sequence:
+          - choose:
+              - conditions: []
+                sequence: !input button_3_initial_press_action
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_3_scenes | length > 0 and button_3_repeat_action | length == 0 and button_3_long_press_action | length == 0 and button_3_long_release_action | length == 0 }}"
+                sequence:
+                  - variables:
+                      button_3_next_value: >
+                        {% set current = states(button_3_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_3_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_3_scene_counter }}"
+                    data:
+                      value: "{{ button_3_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_3_scenes[button_3_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_3_scene_counter }}"
+                    data:
+                      value: 0
       - conditions:
           - condition: trigger
             id: button_3_repeat
@@ -488,7 +592,32 @@ action:
       - conditions:
           - condition: trigger
             id: button_3_short_release
-        sequence: !input button_3_short_release_action
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_3_scenes | length > 0 and not (button_3_repeat_action | length == 0 and button_3_long_press_action | length == 0 and button_3_long_release_action | length == 0) }}"
+                sequence:
+                  - variables:
+                      button_3_next_value: >
+                        {% set current = states(button_3_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_3_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_3_scene_counter }}"
+                    data:
+                      value: "{{ button_3_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_3_scenes[button_3_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_3_scene_counter }}"
+                    data:
+                      value: 0
+            default: !input button_3_short_release_action
       - conditions:
           - condition: trigger
             id: button_3_long_press
@@ -497,36 +626,39 @@ action:
           - condition: trigger
             id: button_3_long_release
         sequence: !input button_3_long_release_action
-      # Button 4 (Off) - short_release: Scene Cycler OR free action
-      - conditions:
-          - condition: trigger
-            id: button_4_short_release
-          - condition: template
-            value_template: "{{ button_4_scenes | length > 0 }}"
-        sequence:
-          - variables:
-              button_4_next_value: >
-                {% set current = states(button_4_scene_counter) | int(0) %}
-                {{ 1 if current >= (button_4_scenes | length) else current + 1 }}
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_4_scene_counter }}"
-            data:
-              value: "{{ button_4_next_value }}"
-          - action: scene.turn_on
-            target:
-              entity_id: "{{ button_4_scenes[button_4_next_value - 1] }}"
-          - delay:
-              seconds: 2.5
-          - action: input_number.set_value
-            target:
-              entity_id: "{{ button_4_scene_counter }}"
-            data:
-              value: 0
+
+      # Button 4 (Off)
       - conditions:
           - condition: trigger
             id: button_4_initial_press
-        sequence: !input button_4_initial_press_action
+        sequence:
+          - choose:
+              - conditions: []
+                sequence: !input button_4_initial_press_action
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_4_scenes | length > 0 and button_4_repeat_action | length == 0 and button_4_long_press_action | length == 0 and button_4_long_release_action | length == 0 }}"
+                sequence:
+                  - variables:
+                      button_4_next_value: >
+                        {% set current = states(button_4_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_4_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_4_scene_counter }}"
+                    data:
+                      value: "{{ button_4_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_4_scenes[button_4_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_4_scene_counter }}"
+                    data:
+                      value: 0
       - conditions:
           - condition: trigger
             id: button_4_repeat
@@ -534,7 +666,32 @@ action:
       - conditions:
           - condition: trigger
             id: button_4_short_release
-        sequence: !input button_4_short_release_action
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ button_4_scenes | length > 0 and not (button_4_repeat_action | length == 0 and button_4_long_press_action | length == 0 and button_4_long_release_action | length == 0) }}"
+                sequence:
+                  - variables:
+                      button_4_next_value: >
+                        {% set current = states(button_4_scene_counter) | int(0) %}
+                        {{ 1 if current >= (button_4_scenes | length) else current + 1 }}
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_4_scene_counter }}"
+                    data:
+                      value: "{{ button_4_next_value }}"
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ button_4_scenes[button_4_next_value - 1] }}"
+                  - delay:
+                      seconds: 2.5
+                  - action: input_number.set_value
+                    target:
+                      entity_id: "{{ button_4_scene_counter }}"
+                    data:
+                      value: 0
+            default: !input button_4_short_release_action
       - conditions:
           - condition: trigger
             id: button_4_long_press
